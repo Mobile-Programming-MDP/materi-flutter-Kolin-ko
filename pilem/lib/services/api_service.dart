@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-class ApiServices {
+class ApiService {
   static const String baseUrl = 'https://api.themoviedb.org/3 ';
   static const String apiKey = "7c2bf2e485638c9e40858f805371fefa";
 
