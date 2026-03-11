@@ -6,6 +6,7 @@ class Movie {
   final String backdropPath;
   final String releaseDate;
   final double voteAverage;
+  bool isFavorite = false;
   // final String imgUrl = "https://image.tmdb.org/t/p/w500";
 
   Movie({
@@ -16,7 +17,21 @@ class Movie {
     required this.backdropPath,
     required this.releaseDate,
     required this.voteAverage,
+    this.isFavorite = false,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'overview': overview,
+      'poster_path': posterPath,
+      'backdrop_path': backdropPath,
+      'release_date': releaseDate,
+      'vote_average': voteAverage,
+      'is_favorite': isFavorite ? 1 : 0,
+    };
+  }
 
   factory Movie.fromJson(Map<String, dynamic> json) {
     return Movie(
@@ -27,6 +42,7 @@ class Movie {
       backdropPath: json['backdrop_path'] ?? '',
       releaseDate: json['release_date'] ?? '',
       voteAverage: json['vote_average'].toDouble() ?? 0.0,
+      isFavorite: json['is_favorite'] == 1,
     );
   }
 }

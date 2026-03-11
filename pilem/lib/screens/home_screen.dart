@@ -18,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Movie> _trendingMovies = [];
   List<Movie> _popularMovies = [];
   
+
   Future<void> _loadMovies() async {
     final List<Map<String, dynamic>> allMoviesData = await _apiService
         .getAllMovies();
@@ -33,12 +34,12 @@ class _HomeScreenState extends State<HomeScreen> {
           .toList();
       _popularMovies = popularMoviesData.map((json) => Movie.fromJson(json)).toList();
     });
+  }
 
-    @override
-    void initState() {
-      super.initState();
-      _loadMovies();
-    }
+  @override
+  void initState() {
+    super.initState();
+    _loadMovies();
   }
 
   @override
@@ -78,9 +79,9 @@ class _HomeScreenState extends State<HomeScreen> {
           height: 200,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: _allMovies.length,
+            itemCount: movies.length,
             itemBuilder: (BuildContext context, int index) {
-              final Movie movie = _allMovies[index];
+              final Movie movie = movies[index];
               return GestureDetector(
                 onTap: () => Navigator.push(
                   context,
@@ -93,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Image.network(
                         "https://image.tmdb.org/t/p/w500${movie.posterPath}",
                         height: 150,
-                        width: 150,
+                        width: 100,
                         fit : BoxFit.cover,
                       ),
                       Text(

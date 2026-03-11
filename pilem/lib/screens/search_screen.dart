@@ -95,7 +95,16 @@ class _SearchScreenState extends State<SearchScreen> {
                         height: 50,
                         width: 50,
                         fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 50,
+                            height: 50,
+                            color: Colors.grey,
+                            child: const Icon(Icons.broken_image),
+                          );
+                        },
                       ),
+
                       title: Text(movie.title),
                       onTap: () {
                         Navigator.push(
