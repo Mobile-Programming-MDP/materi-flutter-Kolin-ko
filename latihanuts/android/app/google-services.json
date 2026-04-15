@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1083580596464",
+    "firebase_url": "https://latihan-uts-1000-default-rtdb.firebaseio.com",
+    "project_id": "latihan-uts-1000",
+    "storage_bucket": "latihan-uts-1000.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1083580596464:android:ec885f6b9f73ac09894235",
+        "android_client_info": {
+          "package_name": "com.example.latihanuts"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCzNNV5_BUS3LP5JynmZtUdstWojCshRS4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
