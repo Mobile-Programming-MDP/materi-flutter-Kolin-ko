@@ -5,16 +5,20 @@ class Note {
   final String title;
   final String description;
   String? imageBase64;
-  String? imageUrl;
+  String? latitude;
+  String? longitude;
+  // String? imageUrl;
   Timestamp? createdAt;
   Timestamp? updatedAt;
 
   Note({
     this.id,
-    required this. title,
+    required this.title,
     required this.description,
     this.imageBase64,
-    this.imageUrl,
+    this.latitude,
+    this.longitude,
+    // this.imageUrl,
     this.createdAt,
     this.updatedAt,
 });
@@ -25,7 +29,10 @@ class Note {
     id: doc.id,
     title: data['title'],
     description: data['description'],
-    imageUrl: data['image_url'],
+    // imageUrl: data['image_url'],
+    imageBase64: data['image_base_64'],
+    latitude: data['latitude'],
+    longitude: data['longitude'],
     createdAt: data['created_at' ] as Timestamp,
     updatedAt: data['updated_at' ] as Timestamp,
   );
@@ -35,7 +42,10 @@ Map<String, dynamic> toDocument() {
   return {
   'title': title,
   'description': description,
-  'image_url': imageUrl,
+  // 'image_url': imageUrl,
+  'image_base_64': imageBase64,
+  'latitude': latitude,
+  'longitude': longitude, 
   'created_at': createdAt,
   'updated_at': updatedAt,
   };
