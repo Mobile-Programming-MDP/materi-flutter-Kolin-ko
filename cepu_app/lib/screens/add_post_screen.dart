@@ -19,10 +19,12 @@ class addPostScreen extends StatefulWidget {
 
 class _addPostScreenState extends State<addPostScreen> {
   final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _fullNameController = TextEditingController();
   String? _base64Image;
   String? _latitude;
   String? _longitude;
+  String? _category;
+  bool _isSubmitting = false;
+  bool _isGettingLocation = false;
 
   List<String> get categories {
     return [
@@ -33,8 +35,6 @@ class _addPostScreenState extends State<addPostScreen> {
       'Tidak Pakai Helm',
     ];
   }
-
-  String? _category;
 
   //1. Fungsi pick, and convert Image
   Future<void> pickImageAndConvert() async {
@@ -54,6 +54,10 @@ class _addPostScreenState extends State<addPostScreen> {
 
   //2. Fungsi Get Geo Location
   Future<void> _getLocation() async {
+    setState(() {
+      _isGettingLocation = true;
+    });
+
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -92,6 +96,12 @@ class _addPostScreenState extends State<addPostScreen> {
         _latitude = null;
         _longitude = null;
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGettingLocation = false;
+        });
+      }
     }
   }
 
@@ -118,43 +128,110 @@ class _addPostScreenState extends State<addPostScreen> {
     );
   }
 
+  Widget _buildImagePreview() {
+    if (_base64Image == null) {
+      return Container(
+        height: 180,
+        width: double.infinity,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade400),
+        ),
+        child: const Text('Belum ada gambar dipilih'),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.memory(
+        base64Decode(_base64Image!),
+        height: 180,
+        width: double.infinity,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+
+  Widget _buildLocationInfo() {
+    if (_latitude == null || _longitude == null) {
+      return const Text('Lokasi belum diambil');
+    }
+
+    return Text(
+      'Lat: $_latitude\nLng: $_longitude',
+      textAlign: TextAlign.center,
+    );
+  }
+
   //4. Fungsi submit post
   Future<void> _submitPost() async {
     if (_base64Image == null || _descriptionController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Pilih gambar dan masukkan deskripsi")),
       );
+      return;
+    }
+    if (_category == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih kategori terlebih dahulu.')),
+      );
+      return;
+    }
+    if (_descriptionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Masukkan deskripsi terlebih dahulu.')),
+      );
+      return;
+    }
+    setState(() {
+      _isSubmitting = true;
+    });
 
-      final userId = FirebaseAuth.instance.currentUser?.uid;
-      final fullName = FirebaseAuth.instance.currentUser?.displayName;
-      try {
-        _getLocation();
-        PostService()
-            .addPost(
-              Post(
-                image: _base64Image,
-                description: _descriptionController.text,
-                category: _category,
-                latitude: _latitude,
-                longitude: _longitude,
-                userId: userId,
-                fullName: fullName,
-              ),
-            )
-            .whenComplete(() {
-              Navigator.of(context).pop();
-            });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Posting berhasil disimpan!")));
-      } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Posting gagal disimpan!")));
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final fullName = FirebaseAuth.instance.currentUser?.displayName;
+    try {
+       if (_latitude == null || _longitude == null) {
+        await _getLocation();
+      }
+      PostService()
+          .addPost(
+            Post(
+              image: _base64Image,
+              description: _descriptionController.text,
+              category: _category,
+              latitude: _latitude,
+              longitude: _longitude,
+              userId: userId,
+              fullName: fullName,
+            ),
+          );
+          if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Posting berhasil disimpan!")));
+      Navigator.of(context).pop();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Posting gagal disimpan! : $e")));
+    }  finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
       }
     }
   }
 
+  @override
+    void dispose() {
+      // TODO: implement dispose
+      _descriptionController.dispose();
+      super.dispose();
+    }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -162,24 +239,53 @@ class _addPostScreenState extends State<addPostScreen> {
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextButton(
-              onPressed: pickImageAndConvert,
-              child: Text("Pick image"),
+            _buildImagePreview(),
+           const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _isSubmitting ? null : pickImageAndConvert,
+              child: const Text('Pick Image'),
             ),
             SizedBox(height: 16),
-            GestureDetector(
-              onTap: _showCategorySelect,
-              child: Chip(label: Row(
-                children: [
-                  Text(_category!),
-                  Icon(Icons.edit, size: 16,)
-                ],
-              )),
+            OutlinedButton(
+              onPressed: _isSubmitting ? null : _showCategorySelect,
+              child: const Text('Select Category'),
+            ),
+            SizedBox(height: 16),
+            TextField(
+              controller: _descriptionController,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Deskripsi',
+                hintText: 'Masukkan deskripsi laporan',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: (_isSubmitting || _isGettingLocation)
+                  ? null
+                  : _getLocation,
+              child: Text(
+                _isGettingLocation ? 'Mengambil Lokasi...' : 'Get Location',
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildLocationInfo(),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _isSubmitting ? null : _submitPost,
+              child: Text(_isSubmitting ? 'Submitting...' : 'Submit'),
             ),
           ],
         ),
       ),
     );
   }
+  
+  
 }
+
+
+
