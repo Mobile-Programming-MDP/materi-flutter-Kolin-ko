@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cepu_app/models/post.dart';
+import 'package:cepu_app/screens/map_detail_screen.dart';
 import 'package:cepu_app/services/post_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +11,6 @@ class DetailScreen extends StatelessWidget {
   final Post post;
 
   const DetailScreen({super.key, required this.post});
-
 
   Future<void> _deletePost(BuildContext context) async {
     final confirm = await showDialog<bool>(
@@ -85,8 +85,7 @@ class DetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (post.category != null)
-                    Chip(label: Text(post.category!)),
+                  if (post.category != null) Chip(label: Text(post.category!)),
                   const SizedBox(height: 8),
                   Text(
                     post.description ?? '',
@@ -116,6 +115,18 @@ class DetailScreen extends StatelessWidget {
                         Text(
                           '${post.latitude}, ${post.longitude}',
                           style: const TextStyle(color: Colors.grey),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MapDetailScreen(post: post),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.map),
+                          label: const Text("View on Map"),
                         ),
                       ],
                     ),
