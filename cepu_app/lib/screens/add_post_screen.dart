@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 
 class addPostScreen extends StatefulWidget {
   const addPostScreen({super.key});
@@ -23,6 +24,7 @@ class _addPostScreenState extends State<addPostScreen> {
   String? _latitude;
   String? _longitude;
   String? _category;
+  bool _isGenerating = false;
   bool _isSubmitting = false;
   bool _isGettingLocation = false;
 
@@ -48,6 +50,7 @@ class _addPostScreenState extends State<addPostScreen> {
       );
       setState(() {
         _base64Image = base64Encode(compressedImage);
+        _generatedDescriptionWithAI();
       });
     }
   }
@@ -225,6 +228,82 @@ class _addPostScreenState extends State<addPostScreen> {
     }
   }
 
+  Future<void> _generatedDescriptionWithAI() async {
+
+    
+    if(_base64Image == null) return;
+    setState(() => _isGenerating = true);
+    try{
+      const apiKey = '';
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=$apiKey';
+      final body = jsonEncode({
+  "contents": [
+    {
+      "parts": [
+        {
+          "text":
+              "Berdasarkan foto ini, identifikasi satu kategori utama kerusakan fasilitas umum "
+              "dari daftar berikut: Jalan Rusak, Lampu Mati, Lampu Jalan Mati, Lawan arah, "
+              "Merokok Di jalan, Tidak Pakai Helm, dan Lainnya. "
+              "Pilih kategori yang paling dominan atau paling mendesak untuk dilaporkan. "
+              "Buat deskripsi singkat untuk laporan perbaikan dan tambahkan permohonan perbaikan. "
+              "Fokus pada kerusakan yang terlibat.\n\n"
+              "Format output yang diinginkan:\n"
+              "Kategori : [satu kategori yang dipilih]\n"
+              "Deskripsi : [deskripsi singkat]"
+        },
+        {
+          "inline_data" : {
+            "mime_type":"image/jpeg",
+            "data" : _base64Image
+          }
+        }
+      ]
+    }
+  ]
+});
+
+        final headers = {'Content-Type' : 'application/json'};
+        final response = await http.post(
+          Uri.parse(url),
+          headers: headers,
+          body: body
+        );
+
+        if(response.statusCode == 200){
+          final jsonResponse = jsonDecode(response.body);
+          final text =
+            jsonResponse['candidates'][0]['content']['parts'][0]['text'];
+          print("AI TEXT : $text");
+          if(text != null && text.isNotEmpty){
+            final lines = text.trim().split('\n');
+            String? aicategory = '';
+            String aidescription = '';
+            for(var line in lines){
+              final lower = line.toLowerCase();
+              if(lower.startsWith("kategori:")){
+                aicategory = line.substring(9).trim();
+              } else if(lower.startsWith("deskripsi:")){
+                aidescription = line.substring(11).trim();
+              }
+            }
+            aidescription = text.trim();
+            setState(() {
+              _category = aicategory ?? 'Tidak diketahui';
+              _descriptionController.text = aidescription;
+            });
+          }
+        } else {
+          debugPrint('request failed: ${response.body}');
+        }
+    } catch (e) {
+      debugPrint('Failed to generate AI description: $e');
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
+    }
+   
+  }
+
   @override
     void dispose() {
       // TODO: implement dispose
@@ -240,7 +319,7 @@ class _addPostScreenState extends State<addPostScreen> {
         padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+          children: <Widget>[
             _buildImagePreview(),
            const SizedBox(height: 12),
             OutlinedButton(
@@ -251,6 +330,11 @@ class _addPostScreenState extends State<addPostScreen> {
             OutlinedButton(
               onPressed: _isSubmitting ? null : _showCategorySelect,
               child: const Text('Select Category'),
+            ),
+            SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: (_isGenerating || _isSubmitting) ? null : _generatedDescriptionWithAI,
+              child: const Text('Generate Description'),
             ),
             SizedBox(height: 16),
             TextField(
