@@ -168,6 +168,37 @@ class _addPostScreenState extends State<addPostScreen> {
     );
   }
 
+  Future<void> sendNotificationToTopic(String body, String senderName) async {
+    final url = Uri.parse(
+      'https://https://cepu-cloud-zfzn.vercel.app/send-to-topic',
+    );
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        "topic": "berita-fasum",
+        "title": " Laporan Baru",
+        "body": body,
+        "senderName": senderName,
+        "senderPhotoUrl":
+            "https://static.vecteezy.com/system/resources/thumbnails/041/642/167.ai-generated-portrait-of-handsome-smiling-young-man-with-folded-arms-isolated-free-png",
+      }),
+    );
+    if (response.statusCode == 200) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Notifikasi berhasil dikirim')));
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('X Gagal kirim notifikasi: ${response.body}')),
+        );
+      }
+    }
+  }
+
   //4. Fungsi submit post
   Future<void> _submitPost() async {
     if (_base64Image == null || _descriptionController.text.isEmpty) {
@@ -195,22 +226,24 @@ class _addPostScreenState extends State<addPostScreen> {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     final fullName = FirebaseAuth.instance.currentUser?.displayName;
     try {
-       if (_latitude == null || _longitude == null) {
+      if (_latitude == null || _longitude == null) {
         await _getLocation();
       }
-      PostService()
-          .addPost(
-            Post(
-              image: _base64Image,
-              description: _descriptionController.text,
-              category: _category,
-              latitude: _latitude,
-              longitude: _longitude,
-              userId: userId,
-              fullName: fullName,
-            ),
-          );
-          if (!mounted) return;
+      PostService().addPost(
+        Post(
+          image: _base64Image,
+          description: _descriptionController.text,
+          category: _category,
+          latitude: _latitude,
+          longitude: _longitude,
+          userId: userId,
+          fullName: fullName,
+        ),
+      );
+      if (!mounted) return;
+
+      sendNotificationToTopic(_descriptionController.text, fullName!);
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Posting berhasil disimpan!")));
@@ -219,7 +252,7 @@ class _addPostScreenState extends State<addPostScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Posting gagal disimpan! : $e")));
-    }  finally {
+    } finally {
       if (mounted) {
         setState(() {
           _isSubmitting = false;
@@ -229,88 +262,86 @@ class _addPostScreenState extends State<addPostScreen> {
   }
 
   Future<void> _generatedDescriptionWithAI() async {
-
-    
-    if(_base64Image == null) return;
+    if (_base64Image == null) return;
     setState(() => _isGenerating = true);
-    try{
+    try {
       const apiKey = '';
-      const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=$apiKey';
+      const url =
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=$apiKey';
       final body = jsonEncode({
-  "contents": [
-    {
-      "parts": [
-        {
-          "text":
-              "Berdasarkan foto ini, identifikasi satu kategori utama kerusakan fasilitas umum "
-              "dari daftar berikut: Jalan Rusak, Lampu Mati, Lampu Jalan Mati, Lawan arah, "
-              "Merokok Di jalan, Tidak Pakai Helm, dan Lainnya. "
-              "Pilih kategori yang paling dominan atau paling mendesak untuk dilaporkan. "
-              "Buat deskripsi singkat untuk laporan perbaikan dan tambahkan permohonan perbaikan. "
-              "Fokus pada kerusakan yang terlibat.\n\n"
-              "Format output yang diinginkan:\n"
-              "Kategori : [satu kategori yang dipilih]\n"
-              "Deskripsi : [deskripsi singkat]"
-        },
-        {
-          "inline_data" : {
-            "mime_type":"image/jpeg",
-            "data" : _base64Image
-          }
-        }
-      ]
-    }
-  ]
-});
+        "contents": [
+          {
+            "parts": [
+              {
+                "text":
+                    "Berdasarkan foto ini, identifikasi satu kategori utama kerusakan fasilitas umum "
+                    "dari daftar berikut: Jalan Rusak, Lampu Mati, Lampu Jalan Mati, Lawan arah, "
+                    "Merokok Di jalan, Tidak Pakai Helm, dan Lainnya. "
+                    "Pilih kategori yang paling dominan atau paling mendesak untuk dilaporkan. "
+                    "Buat deskripsi singkat untuk laporan perbaikan dan tambahkan permohonan perbaikan. "
+                    "Fokus pada kerusakan yang terlibat.\n\n"
+                    "Format output yang diinginkan:\n"
+                    "Kategori : [satu kategori yang dipilih]\n"
+                    "Deskripsi : [deskripsi singkat]",
+              },
+              {
+                "inline_data": {
+                  "mime_type": "image/jpeg",
+                  "data": _base64Image,
+                },
+              },
+            ],
+          },
+        ],
+      });
 
-        final headers = {'Content-Type' : 'application/json'};
-        final response = await http.post(
-          Uri.parse(url),
-          headers: headers,
-          body: body
-        );
+      final headers = {'Content-Type': 'application/json'};
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: body,
+      );
 
-        if(response.statusCode == 200){
-          final jsonResponse = jsonDecode(response.body);
-          final text =
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        final text =
             jsonResponse['candidates'][0]['content']['parts'][0]['text'];
-          print("AI TEXT : $text");
-          if(text != null && text.isNotEmpty){
-            final lines = text.trim().split('\n');
-            String? aicategory = '';
-            String aidescription = '';
-            for(var line in lines){
-              final lower = line.toLowerCase();
-              if(lower.startsWith("kategori:")){
-                aicategory = line.substring(9).trim();
-              } else if(lower.startsWith("deskripsi:")){
-                aidescription = line.substring(11).trim();
-              }
+        print("AI TEXT : $text");
+        if (text != null && text.isNotEmpty) {
+          final lines = text.trim().split('\n');
+          String? aicategory = '';
+          String aidescription = '';
+          for (var line in lines) {
+            final lower = line.toLowerCase();
+            if (lower.startsWith("kategori:")) {
+              aicategory = line.substring(9).trim();
+            } else if (lower.startsWith("deskripsi:")) {
+              aidescription = line.substring(11).trim();
             }
-            aidescription = text.trim();
-            setState(() {
-              _category = aicategory ?? 'Tidak diketahui';
-              _descriptionController.text = aidescription;
-            });
           }
-        } else {
-          debugPrint('request failed: ${response.body}');
+          aidescription = text.trim();
+          setState(() {
+            _category = aicategory ?? 'Tidak diketahui';
+            _descriptionController.text = aidescription;
+          });
         }
+      } else {
+        debugPrint('request failed: ${response.body}');
+      }
     } catch (e) {
       debugPrint('Failed to generate AI description: $e');
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
-   
   }
 
   @override
-    void dispose() {
-      // TODO: implement dispose
-      _descriptionController.dispose();
-      super.dispose();
-    }
-  
+  void dispose() {
+    // TODO: implement dispose
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -321,7 +352,7 @@ class _addPostScreenState extends State<addPostScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             _buildImagePreview(),
-           const SizedBox(height: 12),
+            const SizedBox(height: 12),
             OutlinedButton(
               onPressed: _isSubmitting ? null : pickImageAndConvert,
               child: const Text('Pick Image'),
@@ -333,7 +364,9 @@ class _addPostScreenState extends State<addPostScreen> {
             ),
             SizedBox(height: 16),
             OutlinedButton(
-              onPressed: (_isGenerating || _isSubmitting) ? null : _generatedDescriptionWithAI,
+              onPressed: (_isGenerating || _isSubmitting)
+                  ? null
+                  : _generatedDescriptionWithAI,
               child: const Text('Generate Description'),
             ),
             SizedBox(height: 16),
@@ -367,9 +400,4 @@ class _addPostScreenState extends State<addPostScreen> {
       ),
     );
   }
-  
-  
 }
-
-
-
